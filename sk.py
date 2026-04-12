@@ -105,6 +105,11 @@ def set_window_pos(hwnd, x, y, width, height):
 def show_window(hwnd, cmd):
     user32.ShowWindow(hwnd, cmd)
 
+def get_window_rect(hwnd):
+    rect = RECT()
+    user32.GetWindowRect(hwnd, ctypes.byref(rect))
+    return rect
+
 def get_all_windows():
     windows = []
     def callback(hwnd, lParam):
@@ -119,12 +124,14 @@ def get_all_windows():
                     if len(title.value.strip()) > 0:
                         try:
                             placement = get_window_placement(hwnd)
+                            rect = get_window_rect(hwnd)
                             windows.append({
                                 'hwnd': hwnd,
                                 'title': title.value,
                                 'class': class_name.value,
                                 'placement': placement,
-                                'showCmd': placement.showCmd
+                                'showCmd': placement.showCmd,
+                                'rect': rect
                             })
                         except:
                             pass
@@ -177,8 +184,13 @@ class ScreenKeeper:
             hwnd = win['hwnd']
             hwnd_value = hwnd.value if hasattr(hwnd, 'value') else hwnd
             placement = win['placement']
-            rect = placement.rcNormalPosition
-            normal_rect = [rect.left, rect.top, rect.right, rect.bottom]
+            
+            if placement.showCmd == SW_SHOWNORMAL:
+                rect = win['rect']
+                normal_rect = [rect.left, rect.top, rect.right, rect.bottom]
+            else:
+                rect = placement.rcNormalPosition
+                normal_rect = [rect.left, rect.top, rect.right, rect.bottom]
             
             for mon in monitors:
                 if self.is_window_on_monitor(normal_rect, mon):
@@ -193,14 +205,14 @@ class ScreenKeeper:
                             'hwnd': hwnd,
                             'title': win['title'],
                             'showCmd': placement.showCmd,
-                            'x': rect.left,
-                            'y': rect.top,
-                            'width': rect.right - rect.left,
-                            'height': rect.bottom - rect.top,
+                            'x': normal_rect[0],
+                            'y': normal_rect[1],
+                            'width': normal_rect[2] - normal_rect[0],
+                            'height': normal_rect[3] - normal_rect[1],
                             'state': state,
                             'original_is_primary': mon['is_primary'],
-                            'original_width': rect.right - rect.left,
-                            'original_height': rect.bottom - rect.top
+                            'original_width': normal_rect[2] - normal_rect[0],
+                            'original_height': normal_rect[3] - normal_rect[1]
                         }
                     break
 
