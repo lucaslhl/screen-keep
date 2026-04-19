@@ -24,7 +24,7 @@ SWP_NOACTIVATE = 0x0010
 SWP_FRAMECHANGED = 0x0020
 
 def turn_off_monitor():
-    user32.SendMessageW(HWND_BROADCAST, WM_SYSCOMMAND, SC_MONITORPOWER, 2)
+    user32.PostMessageW(HWND_BROADCAST, WM_SYSCOMMAND, SC_MONITORPOWER, 2)
 
 class RECT(ctypes.Structure):
     _fields_ = [
@@ -302,17 +302,21 @@ class ScreenKeeper:
             print(f"[初始化] 记录窗口位置...")
             self.track_all_windows(self.last_monitors)
             print(f"[初始化] 共记录 {len(self.tracked_windows)} 个窗口")
+            print(f"[初始化] 当前显示器数量: {self.last_monitor_count}")
             time.sleep(0.5)
-            print(f"[初始化] 息屏...\n")
+            print(f"[初始化] 息屏...")
             turn_off_monitor()
-            time.sleep(2)
+            print(f"[初始化] 开始监控显示器状态...\n")
         
         while self.running:
             current_count = get_monitor_count()
             
+            if current_count != self.last_monitor_count:
+                print(f"[检测] 显示器数量变化: {self.last_monitor_count} -> {current_count}")
+            
             if self.last_monitor_count >= 2 and current_count >= 1 and current_count < self.last_monitor_count:
                 if not self.monitor_removed:
-                    print(f"\n[事件] 显示器断开")
+                    print(f"\n[事件] 显示器断开 ({self.last_monitor_count} -> {current_count})")
                     print(f"[保存] 保存窗口位置...")
                     self.saved_window_positions = dict(self.tracked_windows)
                     print(f"[保存] 共保存 {len(self.saved_window_positions)} 个窗口")
@@ -323,7 +327,7 @@ class ScreenKeeper:
             
             elif current_count > self.last_monitor_count:
                 if self.monitor_removed:
-                    print(f"\n[事件] 显示器重新连接")
+                    print(f"\n[事件] 显示器重新连接 ({self.last_monitor_count} -> {current_count})")
                     print(f"[等待] 等待5秒后恢复窗口...\n")
                     self.monitor_reconnected = True
                     self.reconnect_time = time.time()
